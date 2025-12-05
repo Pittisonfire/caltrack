@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: caltrack-db
+    environment:
+      POSTGRES_USER: caltrack_user
+      POSTGRES_PASSWORD: caltrack_password
+      POSTGRES_DB: caltrack
+    volumes:
+      - caltrack_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caltrack_user -d caltrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: caltrack-backend
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql://caltrack_user:caltrack_password@db:5432/caltrack
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: nginx:alpine
+    container_name: caltrack-frontend
+    ports:
+      - "8081:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  caltrack_postgres_data:
